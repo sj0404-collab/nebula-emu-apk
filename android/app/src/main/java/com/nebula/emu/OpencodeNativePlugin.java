@@ -210,7 +210,7 @@ public class OpencodeNativePlugin extends Plugin {
         if (auth == null || !auth.contains("externalstorage")) return null;
         String tree = null;
         try {
-            tree = DocumentsContract.getTreeId(uri);
+            tree = DocumentsContract.getTreeDocumentId(uri);
         } catch (Throwable ignored) { }
         if (tree == null || tree.isEmpty()) {
             String s = uri.toString();
