@@ -1,0 +1,61 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/user/nebula_gaming/emu/tests/dotnet/fx/fx.csproj": {}
+  },
+  "projects": {
+    "/home/user/nebula_gaming/emu/tests/dotnet/fx/fx.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/user/nebula_gaming/emu/tests/dotnet/fx/fx.csproj",
+        "projectName": "fx",
+        "projectPath": "/home/user/nebula_gaming/emu/tests/dotnet/fx/fx.csproj",
+        "packagesPath": "/var/tmp/dn/nuget",
+        "outputPath": "/home/user/nebula_gaming/emu/tests/dotnet/fx/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/var/tmp/dn/home/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net48"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net48": {
+            "framework": "net48",
+            "targetAlias": "net48",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.400"
+      },
+      "frameworks": {
+        "net48": {
+          "framework": "net48",
+          "targetAlias": "net48",
+          "dependencies": {
+            "Microsoft.NETFramework.ReferenceAssemblies": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.0.3, )",
+              "autoReferenced": true
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/tmp/dn/sdk/sdk/10.0.403/RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

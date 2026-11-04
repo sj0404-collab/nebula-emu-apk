@@ -1,0 +1,140 @@
+name: Android Release
+
+# Build a signed release APK whenever a version tag (v1.2.3) is pushed.
+# versionName/versionCode are derived from the tag automatically;
+# the APK is signed with android/keystore/nebula-release.jks (committed demo key,
+# override via NEBULA_KEYSTORE_* secrets if you rotate to a private key).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without v-prefix (e.g. 1.2.3) for a manual run'
+        required: false
+        default: '0.0.0-dev'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version from tag / input
+        id: ver
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            RAW="${GITHUB_REF_NAME}"
+          else
+            RAW="${{ github.event.inputs.version }}"
+          fi
+          # strip leading v
+          V="${RAW#v}"
+          # versionCode = major*10000 + minor*100 + patch (fallback: run number)
+          if [[ "$V" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            MAJ="${BASH_REMATCH[1]}"; MIN="${BASH_REMATCH[2]}"; PAT="${BASH_REMATCH[3]}"
+            CODE=$(( MAJ * 10000 + MIN * 100 + PAT ))
+          else
+            CODE="$(( 1000 + GITHUB_RUN_NUMBER ))"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "versionCode=$CODE" >> "$GITHUB_OUTPUT"
+          echo "tag=${RAW}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version=$V versionCode=$CODE"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile || bun install
+
+      - name: Typecheck
+        run: npx tsc -b --noEmit && npx tsc -p tsconfig.opencode.json --noEmit
+
+      - name: Build web
+        run: bun run build
+
+      - name: Prepare opencode binaries (arm64 musl)
+        run: node scripts/prepare-android-opencode.mjs
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build signed APK
+        env:
+          NEBULA_KEYSTORE_PASSWORD: ${{ secrets.NEBULA_KEYSTORE_PASSWORD }}
+          NEBULA_KEY_ALIAS: ${{ secrets.NEBULA_KEY_ALIAS }}
+          NEBULA_KEY_PASSWORD: ${{ secrets.NEBULA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          chmod +x android/gradlew
+          android/gradlew -p android assembleRelease \
+            -PversionName="${{ steps.ver.outputs.version }}" \
+            -PversionCode="${{ steps.ver.outputs.versionCode }}" \
+            --no-daemon --stacktrace
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          OUT="nebula-emu-${{ steps.ver.outputs.version }}.apk"
+          cp "$APK" "$OUT"
+          echo "APK=$OUT" >> "$GITHUB_ENV"
+          sha256sum "$OUT" > "$OUT.sha256"
+          cat "$OUT.sha256"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nebula-emu-${{ steps.ver.outputs.version }}
+          path: |
+            nebula-emu-${{ steps.ver.outputs.version }}.apk
+            nebula-emu-${{ steps.ver.outputs.version }}.apk.sha256
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          NOTES="$(printf '%s\n' \
+            "### Nebula Emu ${{ steps.ver.outputs.tag }}" \
+            "" \
+            "- **versionName:** \`${{ steps.ver.outputs.version }}\`" \
+            "- **versionCode:** \`${{ steps.ver.outputs.versionCode }}\`" \
+            "- **SHA-256:** \`$(cut -d' ' -f1 "${{ env.APK }}.sha256")\`" \
+            "- **Подпись:** release keystore (auto-sign в CI; тот же ключ — апдейт поверх старой установки)" \
+            "")"
+          gh release create "${{ steps.ver.outputs.tag }}" \
+            "${{ env.APK }}" \
+            "${{ env.APK }}.sha256" \
+            --title "Nebula Emu ${{ steps.ver.outputs.tag }}" \
+            --notes "$NOTES" \
+            --verify-tag || \
+          gh release upload "${{ steps.ver.outputs.tag }}" \
+            "${{ env.APK }}" \
+            "${{ env.APK }}.sha256" \
+            --clobber

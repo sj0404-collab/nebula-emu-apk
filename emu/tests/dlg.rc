@@ -1,0 +1,51 @@
+// dlg.rc — resources for dlg.c (zig rc dlg.rc → dlg.res, linked into dlg.exe / dlg32.exe)
+#include <windows.h>
+#include "dlg.h"
+
+STRINGTABLE
+BEGIN
+  IDS_TITLE   "Nebula dialog test"
+  IDS_GREET   "Hello from the string table: привет"
+END
+
+IDI_APP ICON "dlg.ico"
+
+IDD_MAIN DIALOGEX 0, 0, 220, 140
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Install Nebula Test"
+FONT 8, "MS Shell Dlg"
+BEGIN
+  LTEXT           "Destination folder:", IDC_LABEL, 8, 8, 120, 8
+  EDITTEXT        IDC_EDIT, 8, 20, 160, 14, ES_AUTOHSCROLL
+  PUSHBUTTON      "...", IDC_BROWSE, 176, 19, 24, 16
+  AUTOCHECKBOX    "Create &shortcut", IDC_CHECK, 8, 40, 100, 10
+  COMBOBOX        IDC_COMBO, 8, 54, 100, 60, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+  LISTBOX         IDC_LIST, 116, 54, 96, 40, LBS_NOTIFY | WS_VSCROLL | WS_TABSTOP
+  CONTROL         "", IDC_PROGRESS, "msctls_progress32", WS_BORDER, 8, 100, 204, 10
+  LTEXT           "", IDC_STATUS, 8, 112, 204, 8
+  DEFPUSHBUTTON   "&Install", IDOK, 108, 122, 50, 14
+  PUSHBUTTON      "Cancel", IDCANCEL, 162, 122, 50, 14
+END
+
+IDD_ABOUT DIALOGEX 0, 0, 160, 60
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION
+CAPTION "About"
+FONT 8, "MS Shell Dlg"
+BEGIN
+  LTEXT           "Nested modal dialog", -1, 8, 8, 140, 8
+  DEFPUSHBUTTON   "OK", IDOK, 55, 40, 50, 14
+END
+
+IDM_MAIN MENU
+BEGIN
+  POPUP "&File"
+  BEGIN
+    MENUITEM "&New\tCtrl+N", IDM_NEW
+    MENUITEM SEPARATOR
+    MENUITEM "E&xit", IDM_EXIT
+  END
+  POPUP "&Edit"
+  BEGIN
+    MENUITEM "&Copy", IDM_COPY, GRAYED
+  END
+END

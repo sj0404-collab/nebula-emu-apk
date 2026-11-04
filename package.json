@@ -1,0 +1,33 @@
+{
+  "name": "nebula-emu",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Windows x86/x64 emulator (wasm64) + real opencode on device — no PC required",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "typecheck": "tsc -b --noEmit && tsc -p tsconfig.opencode.json",
+    "opencode": "bun run opencode/bridge.ts",
+    "opencode:compile": "bun build --compile opencode/bridge.ts --outfile release/opencode-bridge",
+    "test:opencode": "bun test opencode/bridge.test.ts",
+    "build:wasm": "sh emu/x64/build.sh",
+    "android:sync": "npm run build && cap sync android",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleRelease",
+    "android:prepare-opencode": "node scripts/prepare-android-opencode.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/core": "^8.6.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.0",
+    "@types/bun": "^1.4.4",
+    "@types/node": "^24.10.1",
+    "playwright-core": "^1.64.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.1"
+  }
+}

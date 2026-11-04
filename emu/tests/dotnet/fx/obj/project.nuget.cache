@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "ykm1UFXdG2M=",
+  "success": true,
+  "projectFilePath": "/home/user/nebula_gaming/emu/tests/dotnet/fx/fx.csproj",
+  "expectedPackageFiles": [
+    "/var/tmp/dn/nuget/microsoft.netframework.referenceassemblies/1.0.3/microsoft.netframework.referenceassemblies.1.0.3.nupkg.sha512",
+    "/var/tmp/dn/nuget/microsoft.netframework.referenceassemblies.net48/1.0.3/microsoft.netframework.referenceassemblies.net48.1.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

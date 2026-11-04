@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "PDhs7X4fPrU=",
+  "success": true,
+  "projectFilePath": "/home/user/nebula_gaming/emu/tests/dotnet/app/app.csproj",
+  "expectedPackageFiles": [
+    "/var/tmp/dn/nuget/microsoft.netcore.app.host.win-x64/10.0.14/microsoft.netcore.app.host.win-x64.10.0.14.nupkg.sha512"
+  ],
+  "logs": []
+}

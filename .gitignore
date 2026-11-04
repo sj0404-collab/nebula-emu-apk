@@ -1,0 +1,31 @@
+node_modules/
+dist/
+release/
+*.log
+logs/
+.DS_Store
+# local machine paths / tooling junk
+android/local.properties
+*.tsbuildinfo
+bridge-test.*
+test-ws-browser/
+# built native runner
+emu/x64/x64run
+emu/x64/x64run.exe
+# Android generated / large binaries prepared by scripts
+android/app/src/main/assets/public/
+android/app/src/main/jniLibs/**/libopencode.so
+android/app/src/main/jniLibs/**/libmusl-loader.so
+android/app/src/main/assets/opencode/
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+*.apk
+# optional runtime packs (downloaded by emu/tools/*.sh)
+public/x64/sys32/
+public/x64/dotnet/
+public/x64/dx/
+# bun
+bun.lockb
+.opencode/
