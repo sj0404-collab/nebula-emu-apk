@@ -119,6 +119,65 @@ function extractBinaryFromTgz(tgz, destSo) {
   if (sz < 10_000_000) throw new Error('suspiciously small binary — check extract path');
 }
 
+/**
+ * Resolve the current musl aarch64 .apk URL.
+ * The CDN no longer serves `latest-stable/aarch64/` (404) — packages live under
+ * `<branch>/<repo>/aarch64/`. We read APKINDEX to find the exact musl version,
+ * with static fallbacks if the index is unreachable.
+ */
+const ALPINE_BRANCHES = ['v3.22', 'v3.21', 'v3.20', 'edge'];
+const ALPINE_REPOS = ['main', 'community'];
+
+async function resolveMuslApkUrl() {
+  const override = process.env.MUSL_LOADER_URL;
+  if (override) return override;
+
+  for (const branch of ALPINE_BRANCHES) {
+    for (const repo of ALPINE_REPOS) {
+      const idxUrl = `https://dl-cdn.alpinelinux.org/alpine/${branch}/${repo}/aarch64/APKINDEX.tar.gz`;
+      try {
+        const res = await fetch(idxUrl, {
+          signal: AbortSignal.timeout(20_000),
+          headers: { 'user-agent': 'nebula-emu-prepare/1.0' },
+        });
+        if (!res.ok || !res.body) continue;
+        const buf = Buffer.from(await res.arrayBuffer());
+        const tmp = join(root, 'node_modules', `.apkindex-${branch}-${repo}.tgz`);
+        mkdirSync(dirname(tmp), { recursive: true });
+        const { writeFileSync } = await import('node:fs');
+        writeFileSync(tmp, buf);
+        const dir = tmp + '.d';
+        rmSync(dir, { recursive: true, force: true });
+        try {
+          tarExtract(tmp, dir);
+          const idxFile = walk(dir).find((f) => f.endsWith('APKINDEX'));
+          if (!idxFile) continue;
+          const text = (await import('node:fs')).readFileSync(idxFile, 'utf8');
+          // blocks separated by blank lines; match exact package "musl"
+          for (const block of text.split(/\r?\n\r?\n/)) {
+            const p = block.match(/^P:(musl)$/m);
+            const v = block.match(/^V:(.+)$/m);
+            if (p && v) {
+              const url = `https://dl-cdn.alpinelinux.org/alpine/${branch}/${repo}/aarch64/musl-${v[1].trim()}.apk`;
+              console.log(`  · musl resolved: ${branch}/${repo} → ${v[1].trim()}`);
+              return url;
+            }
+          }
+        } finally {
+          rmSync(dir, { recursive: true, force: true });
+          rmSync(tmp, { force: true });
+        }
+      } catch (e) {
+        console.log(`  · APKINDEX ${branch}/${repo} failed: ${e?.message ?? e}`);
+      }
+    }
+  }
+
+  // static fallbacks (last known good, newest first)
+  console.log('  · APKINDEX unresolved — using fallback URLs');
+  return 'https://dl-cdn.alpinelinux.org/alpine/v3.22/main/aarch64/musl-1.2.5-r13.apk';
+}
+
 async function main() {
   console.log('[prepare-android-opencode]');
 
@@ -140,11 +199,29 @@ async function main() {
   if (existsSync(destLoader) && statSync(destLoader).size > 50_000 && !FORCE) {
     console.log(`  • libmusl-loader.so already present (${statSync(destLoader).size} B)`);
   } else {
-    const loaderUrl =
-      process.env.MUSL_LOADER_URL ||
-      'https://dl-cdn.alpinelinux.org/alpine/latest-stable/aarch64/musl-1.2.5-r2.apk';
+    const loaderUrl = await resolveMuslApkUrl();
     const apk = join(root, 'node_modules', '.musl.apk');
-    await download(loaderUrl, apk);
+    // try resolved URL first, then any remaining fallbacks
+    const candidates = [loaderUrl];
+    if (!process.env.MUSL_LOADER_URL) {
+      candidates.push(
+        'https://dl-cdn.alpinelinux.org/alpine/v3.21/main/aarch64/musl-1.2.5-r2.apk',
+        'https://dl-cdn.alpinelinux.org/alpine/v3.22/main/aarch64/musl-1.2.5-r13.apk',
+      );
+    }
+    let downloaded = false;
+    let dlErr;
+    for (const u of [...new Set(candidates)]) {
+      try {
+        await download(u, apk);
+        downloaded = true;
+        break;
+      } catch (e) {
+        dlErr = e;
+        console.log(`  · candidate failed: ${u}`);
+      }
+    }
+    if (!downloaded) throw dlErr ?? new Error('all musl loader URLs failed');
     const tmpDir = apk + '.d';
     rmSync(tmpDir, { recursive: true, force: true });
     try {
