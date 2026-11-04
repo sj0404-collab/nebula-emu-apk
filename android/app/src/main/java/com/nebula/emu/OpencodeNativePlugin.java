@@ -5,7 +5,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
-import android.os.Process;
+import android.provider.DocumentsContract;
 import android.provider.Settings;
 import android.webkit.WebView;
 
@@ -54,7 +54,7 @@ public class OpencodeNativePlugin extends Plugin {
     private static final String OC_BASE = "http://127.0.0.1:" + OC_PORT;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
-    private Process ocProcess;
+    private java.lang.Process ocProcess;
     private Thread pumpThread;
 
     private File workspace() {
@@ -208,7 +208,10 @@ public class OpencodeNativePlugin extends Plugin {
         if (uri == null) return null;
         String auth = uri.getAuthority();
         if (auth == null || !auth.contains("externalstorage")) return null;
-        String tree = uri.getTreeId();
+        String tree = null;
+        try {
+            tree = DocumentsContract.getTreeId(uri);
+        } catch (Throwable ignored) { }
         if (tree == null || tree.isEmpty()) {
             String s = uri.toString();
             int i = s.indexOf("/tree/");
@@ -370,7 +373,7 @@ public class OpencodeNativePlugin extends Plugin {
                 ocProcess = pb.start();
                 // lower oom-adj-ish niceness so the phantom process killer is less eager
                 try {
-                    Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+                    android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
                 } catch (Exception ignored) { }
 
                 // wait for health (up to 90s — first boot may migrate db)
@@ -414,11 +417,14 @@ public class OpencodeNativePlugin extends Plugin {
                 ev.put("base", OC_BASE);
                 ev.put("ok", payload.getBoolean("ok", false));
                 notifyListeners("opencodeReady", ev, false);
-                webView.evaluateJavascript(
-                        "window.__NEBULA_OC_BASE=" + jsonStr(OC_BASE) + ";"
-                                + "window.dispatchEvent(new CustomEvent('nebula-opencode',{detail:{base:"
-                                + jsonStr(OC_BASE) + ",ok:" + payload.getBoolean("ok", false) + "}}));",
-                        null);
+                WebView wv = getBridge() != null ? getBridge().getWebView() : null;
+                if (wv != null) {
+                    wv.evaluateJavascript(
+                            "window.__NEBULA_OC_BASE=" + jsonStr(OC_BASE) + ";"
+                                    + "window.dispatchEvent(new CustomEvent('nebula-opencode',{detail:{base:"
+                                    + jsonStr(OC_BASE) + ",ok:" + payload.getBoolean("ok", false) + "}}));",
+                            null);
+                }
             } catch (Exception ignored) { }
         });
     }
@@ -493,7 +499,7 @@ public class OpencodeNativePlugin extends Plugin {
     }
 
     /** true while the process has not exited yet (exitValue throws if still running). */
-    private static boolean ocAlive(Process p) {
+    private static boolean ocAlive(java.lang.Process p) {
         try {
             p.exitValue();
             return false;
@@ -504,7 +510,7 @@ public class OpencodeNativePlugin extends Plugin {
         }
     }
 
-    private static int getPid(Process p) {
+    private static int getPid(java.lang.Process p) {
         try {
             Class<?> c = Class.forName("java.lang.Process");
             java.lang.reflect.Method m = c.getMethod("pid");
