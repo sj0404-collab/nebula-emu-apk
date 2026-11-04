@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+// env var → value, treating empty string as unset (GitHub secrets resolve to "" when missing)
+def envOr(String name, String defVal) {
+    def v = System.getenv(name)
+    return (v == null || v.trim().isEmpty()) ? defVal : v
+}
+
 android {
     namespace = "com.nebula.emu"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -20,11 +26,13 @@ android {
     signingConfigs {
         // Demo keystore committed to the repo so every CI build is installable and upgradable.
         // Override with env NEBULA_KEYSTORE / NEBULA_KEYSTORE_PASSWORD / NEBULA_KEY_ALIAS / NEBULA_KEY_PASSWORD for a private key.
+        // Empty env (unset GitHub secrets) must fall back to defaults — Groovy ?: only checks null.
         release {
-            storeFile file(System.getenv("NEBULA_KEYSTORE") ?: "$rootDir/keystore/nebula-release.jks")
-            storePassword System.getenv("NEBULA_KEYSTORE_PASSWORD") ?: "nebula-emu-2026"
-            keyAlias System.getenv("NEBULA_KEY_ALIAS") ?: "nebula"
-            keyPassword System.getenv("NEBULA_KEY_PASSWORD") ?: "nebula-emu-2026"
+            def ksPath = envOr("NEBULA_KEYSTORE", "$rootDir/keystore/nebula-release.jks")
+            storeFile file(ksPath)
+            storePassword envOr("NEBULA_KEYSTORE_PASSWORD", "nebula-emu-2026")
+            keyAlias envOr("NEBULA_KEY_ALIAS", "nebula")
+            keyPassword envOr("NEBULA_KEY_PASSWORD", "nebula-emu-2026")
         }
     }
     buildTypes {
